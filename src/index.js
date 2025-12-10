@@ -35,14 +35,14 @@ async function fetchLeagueInfo() {
     // Set the season for the client
     client.setCookies({ espnS2: config.espnS2, SWID: config.SWID });
 
-    // Fetch league info for the current season (2024)
-    const leagueInfo = await client.getLeagueInfo({ seasonId: 2024 });
+    // Fetch league info for the current season (2025)
+    const leagueInfo = await client.getLeagueInfo({ seasonId: 2025 });
     console.log('League Name:', leagueInfo.name || 'Unknown');
     console.log('Number of Teams:', leagueInfo.size || 'Unknown');
 
     console.log('\n👥 Teams in League:\n');
-    // Get teams for week 14 (current week in Dec 2024)
-    const teams = await client.getTeamsAtWeek({ seasonId: 2024, scoringPeriodId: 14 });
+    // Get teams for week 14 (current week in Dec 2025)
+    const teams = await client.getTeamsAtWeek({ seasonId: 2025, scoringPeriodId: 14 });
 
     // Sort by wins
     teams.sort((a, b) => {
