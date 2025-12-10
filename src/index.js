@@ -1,4 +1,9 @@
-import { Client } from 'espn-fantasy-football-api/node.js';
+import dotenv from 'dotenv';
+import pkg from 'espn-fantasy-football-api/node.js';
+const { Client } = pkg;
+
+// Load environment variables from .env file
+dotenv.config();
 
 // Configuration
 const config = {
@@ -27,27 +32,39 @@ async function fetchLeagueInfo() {
 
     console.log('\n📊 Fetching league information...\n');
 
-    // Example: Get teams in the league
-    // Note: You'll need to check the library's documentation for available methods
-    // This is a basic example structure
+    // Set the season for the client
+    client.setCookies({ espnS2: config.espnS2, SWID: config.SWID });
 
-    console.log('✅ Client initialized successfully!');
-    console.log('\nTo use this with your league:');
-    console.log('1. Set ESPN_LEAGUE_ID environment variable to your league ID');
-    console.log('2. For private leagues, also set ESPN_S2 and ESPN_SWID cookies');
-    console.log('\nExample:');
-    console.log('  export ESPN_LEAGUE_ID=123456');
-    console.log('  export ESPN_S2="your_espn_s2_cookie"');
-    console.log('  export ESPN_SWID="your_swid_cookie"');
-    console.log('  npm start');
+    // Fetch league info for the current season (2024)
+    const leagueInfo = await client.getLeagueInfo({ seasonId: 2024 });
+    console.log('League Name:', leagueInfo.name || 'Unknown');
+    console.log('Number of Teams:', leagueInfo.size || 'Unknown');
 
-    // Add your custom API calls here
-    // Example methods you might want to explore:
-    // - client.getLeagueInfo()
-    // - client.getTeams()
-    // - client.getBoxscoreForWeek()
-    // - client.getFreeAgents()
-    // Check the library documentation for all available methods
+    console.log('\n👥 Teams in League:\n');
+    // Get teams for week 14 (current week in Dec 2024)
+    const teams = await client.getTeamsAtWeek({ seasonId: 2024, scoringPeriodId: 14 });
+
+    // Sort by wins
+    teams.sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return (b.points || 0) - (a.points || 0);
+    });
+
+    teams.forEach((team, index) => {
+      console.log(`${index + 1}. ${team.name || 'Team ' + (index + 1)}`);
+      if (team.abbreviation) console.log(`   (${team.abbreviation})`);
+      console.log(`   Record: ${team.wins || 0}-${team.losses || 0}${team.ties > 0 ? `-${team.ties}` : ''}`);
+
+      // Try different property names for points
+      const pointsFor = team.totalPointsScored || team.points || team.regularSeasonPointsFor || 0;
+      const pointsAgainst = team.totalPointsAgainst || team.pointsAgainst || team.regularSeasonPointsAgainst || 0;
+
+      if (pointsFor > 0) console.log(`   Points For: ${pointsFor.toFixed(2)}`);
+      if (pointsAgainst > 0) console.log(`   Points Against: ${pointsAgainst.toFixed(2)}`);
+      console.log('');
+    });
+
+    console.log('\n✅ Data fetched successfully!');
 
   } catch (error) {
     console.error('❌ Error:', error.message);
