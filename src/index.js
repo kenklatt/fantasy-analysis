@@ -66,6 +66,79 @@ async function fetchLeagueInfo() {
 
     console.log('\n✅ Data fetched successfully!');
 
+    // Calculate average point differential by wins and losses per team
+    console.log('\n📈 Analyzing point differentials by wins/losses per team...\n');
+
+    const currentWeek = 14; // Week 14 of 2025 season
+    const teamStats = new Map();
+
+    // Initialize stats for each team
+    teams.forEach(team => {
+      teamStats.set(team.id, {
+        name: team.name,
+        abbreviation: team.abbreviation,
+        winDifferentials: [],
+        lossDifferentials: []
+      });
+    });
+
+    // Fetch boxscores for each week to get game-by-game results
+    for (let week = 1; week <= currentWeek; week++) {
+      try {
+        const boxscores = await client.getBoxscoreForWeek({
+          seasonId: 2025,
+          matchupPeriodId: week,
+          scoringPeriodId: week
+        });
+
+        for (const matchup of boxscores) {
+          if (matchup.homeScore && matchup.awayScore && matchup.homeTeamId && matchup.awayTeamId) {
+            const homeDiff = matchup.homeScore - matchup.awayScore;
+            const awayDiff = matchup.awayScore - matchup.homeScore;
+
+            const homeStats = teamStats.get(matchup.homeTeamId);
+            const awayStats = teamStats.get(matchup.awayTeamId);
+
+            // Record differentials for home team
+            if (homeStats) {
+              if (homeDiff > 0) {
+                homeStats.winDifferentials.push(homeDiff);
+              } else if (homeDiff < 0) {
+                homeStats.lossDifferentials.push(homeDiff);
+              }
+            }
+
+            // Record differentials for away team
+            if (awayStats) {
+              if (awayDiff > 0) {
+                awayStats.winDifferentials.push(awayDiff);
+              } else if (awayDiff < 0) {
+                awayStats.lossDifferentials.push(awayDiff);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`Could not fetch week ${week}:`, err.message);
+      }
+    }
+
+    // Calculate and display results for each team
+    teamStats.forEach((stats, teamId) => {
+      const avgWinDiff = stats.winDifferentials.length > 0
+        ? stats.winDifferentials.reduce((sum, diff) => sum + diff, 0) / stats.winDifferentials.length
+        : 0;
+
+      const avgLossDiff = stats.lossDifferentials.length > 0
+        ? stats.lossDifferentials.reduce((sum, diff) => sum + diff, 0) / stats.lossDifferentials.length
+        : 0;
+
+      console.log(`${stats.name} (${stats.abbreviation})`);
+      console.log(`  Wins: ${stats.winDifferentials.length} games, avg margin: +${avgWinDiff.toFixed(2)} pts`);
+      console.log(`  Losses: ${stats.lossDifferentials.length} games, avg margin: ${avgLossDiff.toFixed(2)} pts`);
+      console.log('');
+    });
+
   } catch (error) {
     console.error('❌ Error:', error.message);
     console.error('\nMake sure:');
