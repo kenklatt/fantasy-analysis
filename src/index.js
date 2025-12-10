@@ -78,7 +78,9 @@ async function fetchLeagueInfo() {
         name: team.name,
         abbreviation: team.abbreviation,
         winDifferentials: [],
-        lossDifferentials: []
+        lossDifferentials: [],
+        lossOwnScores: [],      // Team's own score in losses
+        lossOpponentScores: []  // Opponent's score in losses
       });
     });
 
@@ -105,6 +107,8 @@ async function fetchLeagueInfo() {
                 homeStats.winDifferentials.push(homeDiff);
               } else if (homeDiff < 0) {
                 homeStats.lossDifferentials.push(homeDiff);
+                homeStats.lossOwnScores.push(matchup.homeScore);
+                homeStats.lossOpponentScores.push(matchup.awayScore);
               }
             }
 
@@ -114,6 +118,8 @@ async function fetchLeagueInfo() {
                 awayStats.winDifferentials.push(awayDiff);
               } else if (awayDiff < 0) {
                 awayStats.lossDifferentials.push(awayDiff);
+                awayStats.lossOwnScores.push(matchup.awayScore);
+                awayStats.lossOpponentScores.push(matchup.homeScore);
               }
             }
           }
@@ -122,6 +128,18 @@ async function fetchLeagueInfo() {
         console.error(`Could not fetch week ${week}:`, err.message);
       }
     }
+
+    // Calculate league average score
+    let allScores = [];
+    teamStats.forEach((stats) => {
+      allScores.push(...stats.lossOwnScores);
+      allScores.push(...stats.lossOpponentScores);
+    });
+    const leagueAvgScore = allScores.length > 0
+      ? allScores.reduce((sum, score) => sum + score, 0) / allScores.length
+      : 0;
+
+    console.log(`League Average Score: ${leagueAvgScore.toFixed(2)} pts\n`);
 
     // Calculate and display results for each team
     teamStats.forEach((stats, teamId) => {
@@ -136,6 +154,42 @@ async function fetchLeagueInfo() {
       console.log(`${stats.name} (${stats.abbreviation})`);
       console.log(`  Wins: ${stats.winDifferentials.length} games, avg margin: +${avgWinDiff.toFixed(2)} pts`);
       console.log(`  Losses: ${stats.lossDifferentials.length} games, avg margin: ${avgLossDiff.toFixed(2)} pts`);
+
+      if (stats.lossDifferentials.length > 0) {
+        // Calculate averages for losses
+        const avgOwnScoreLoss = stats.lossOwnScores.reduce((sum, s) => sum + s, 0) / stats.lossOwnScores.length;
+        const avgOppScoreLoss = stats.lossOpponentScores.reduce((sum, s) => sum + s, 0) / stats.lossOpponentScores.length;
+
+        // Calculate variance
+        const ownScoreVariance = stats.lossOwnScores.length > 1
+          ? stats.lossOwnScores.reduce((sum, s) => sum + Math.pow(s - avgOwnScoreLoss, 2), 0) / (stats.lossOwnScores.length - 1)
+          : 0;
+        const oppScoreVariance = stats.lossOpponentScores.length > 1
+          ? stats.lossOpponentScores.reduce((sum, s) => sum + Math.pow(s - avgOppScoreLoss, 2), 0) / (stats.lossOpponentScores.length - 1)
+          : 0;
+
+        const ownScoreStdDev = Math.sqrt(ownScoreVariance);
+        const oppScoreStdDev = Math.sqrt(oppScoreVariance);
+
+        console.log(`  Loss Analysis:`);
+        console.log(`    Avg own score: ${avgOwnScoreLoss.toFixed(2)} pts (σ: ${ownScoreStdDev.toFixed(2)})`);
+        console.log(`    Avg opp score: ${avgOppScoreLoss.toFixed(2)} pts (σ: ${oppScoreStdDev.toFixed(2)})`);
+
+        // Determine if losing due to underperformance or strong opponents
+        const ownScoreDiff = avgOwnScoreLoss - leagueAvgScore;
+        const oppScoreDiff = avgOppScoreLoss - leagueAvgScore;
+
+        if (ownScoreDiff < -10 && oppScoreDiff < 10) {
+          console.log(`    📉 Losing primarily due to UNDERPERFORMANCE (${ownScoreDiff.toFixed(1)} pts below avg)`);
+        } else if (oppScoreDiff > 10 && ownScoreDiff > -10) {
+          console.log(`    🔥 Losing primarily due to STRONG OPPONENTS (${oppScoreDiff.toFixed(1)} pts above avg)`);
+        } else if (ownScoreDiff < -10 && oppScoreDiff > 10) {
+          console.log(`    💥 Losing due to BOTH: underperforming AND facing strong opponents`);
+        } else {
+          console.log(`    ⚖️  Losses are relatively balanced (close to league average)`);
+        }
+      }
+
       console.log('');
     });
 
