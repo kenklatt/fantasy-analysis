@@ -1,0 +1,22 @@
+{
+  "name": "espn-fantasy-analysis",
+  "version": "0.1.0",
+  "description": "ESPN Fantasy Football API analysis tool",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "keywords": [
+    "espn",
+    "fantasy",
+    "football",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "espn-fantasy-football-api": "^2.0.0"
+  }
+}
